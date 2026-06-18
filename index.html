@@ -501,7 +501,6 @@ else{document.getElementById('sbanner').style.display='flex';cu={uid:'demo',name
 function afterLogin(){updateProfileUI();loadFeed();show('s-demo');initDemo();}
 
 // AUTH
-let isSignup=false;
 function toggleSignup(){
   isSignup=!isSignup;
   document.getElementById('auth-btn').textContent=isSignup?'Create account':'Sign in';

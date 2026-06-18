@@ -326,15 +326,20 @@ body{font-family:var(--font);color:var(--dark);-webkit-font-smoothing:antialiase
     <div class="auth-p">Share the places worth knowing.<br>Restaurants, bars, hidden gems &amp; more.</div>
   </div>
   <div class="auth-form">
+    <input class="inp" id="em" type="email" placeholder="your@lcg.consulting" autocomplete="email" />
+    <input class="inp" id="pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()" />
+    <button class="primary-btn" onclick="doAuth()" id="auth-btn">Sign in</button>
+    <div class="auth-tog" id="auth-tog-txt">No account? <a onclick="toggleSignup()">Create one</a></div>
+    <div style="position:relative;height:1px;background:var(--b1);margin:8px 0;">
+      <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:0 12px;font-size:12px;color:var(--hint);font-weight:600;">or</span>
+    </div>
     <button class="g-btn" onclick="signInGoogle()">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
       Continue with Google
     </button>
-    <div class="divider"></div>
-    <input class="inp" id="em" type="email" placeholder="your@lcg.consulting" />
-    <input class="inp" id="pw" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doAuth()" />
-    <button class="primary-btn" onclick="doAuth()">Sign in</button>
-    <div class="auth-tog">No account? <a onclick="toggleSignup()">Create one</a></div>
+    <button onclick="skipLogin()" style="width:100%;background:none;border:1.5px dashed var(--b2);border-radius:var(--rs);padding:12px;font-size:13px;font-weight:700;color:var(--mid);font-family:var(--font);cursor:pointer;transition:all .18s;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='var(--b2)';this.style.color='var(--mid)'">
+      👀 Browse without signing in
+    </button>
   </div>
 </div>
 
@@ -496,9 +501,39 @@ else{document.getElementById('sbanner').style.display='flex';cu={uid:'demo',name
 function afterLogin(){updateProfileUI();loadFeed();show('s-demo');initDemo();}
 
 // AUTH
-function toggleSignup(){isSignup=!isSignup;}
-async function signInGoogle(){if(!LIVE){alert('Configure Firebase first.');return;}try{await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());}catch(e){alert(e.message);}}
-async function doAuth(){if(!LIVE){alert('Configure Firebase first.');return;}const e=document.getElementById('em').value.trim(),p=document.getElementById('pw').value;if(!e||!p)return;try{isSignup?await auth.createUserWithEmailAndPassword(e,p):await auth.signInWithEmailAndPassword(e,p);}catch(err){alert(err.message);}}
+let isSignup=false;
+function toggleSignup(){
+  isSignup=!isSignup;
+  document.getElementById('auth-btn').textContent=isSignup?'Create account':'Sign in';
+  document.getElementById('auth-tog-txt').innerHTML=isSignup?'Have an account? <a onclick="toggleSignup()">Sign in</a>':'No account? <a onclick="toggleSignup()">Create one</a>';
+}
+async function signInGoogle(){
+  if(!LIVE){skipLogin();return;}
+  try{await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());}
+  catch(e){alert('Google sign-in failed: '+e.message+'\n\nTry email/password instead.');}
+}
+async function doAuth(){
+  const e=document.getElementById('em').value.trim(),p=document.getElementById('pw').value;
+  if(!e||!p){alert('Please enter your email and password.');return;}
+  const btn=document.getElementById('auth-btn');
+  btn.textContent='Please wait…';btn.disabled=true;
+  if(!LIVE){cu={uid:'demo-'+e,name:e.split('@')[0],email:e};afterLogin();return;}
+  try{
+    if(isSignup)await auth.createUserWithEmailAndPassword(e,p);
+    else await auth.signInWithEmailAndPassword(e,p);
+  }catch(err){
+    btn.textContent=isSignup?'Create account':'Sign in';btn.disabled=false;
+    if(err.code==='auth/user-not-found'||err.code==='auth/wrong-password'){
+      if(confirm('Account not found. Create a new account with this email?')){
+        isSignup=true;await doAuth();
+      }
+    } else alert(err.message);
+  }
+}
+function skipLogin(){
+  cu={uid:'guest-'+Date.now(),name:'Guest',email:'guest@lcg.consulting'};
+  afterLogin();
+}
 function doSignOut(){if(LIVE)auth.signOut();else{cu=null;show('s-auth');}}
 function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');}
 
